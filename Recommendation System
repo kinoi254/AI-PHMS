@@ -1,0 +1,45 @@
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.ensemble import IsolationForest
+
+# Simulate health data
+data = {
+    'timestamp': pd.date_range(start='2023-10-01', periods=100, freq='T'),
+    'heart_rate': np.random.randint(60, 100, 100),
+    'blood_oxygen': np.random.randint(90, 100, 100),
+    'activity_level': np.random.choice(['low', 'moderate', 'high'], 100)
+}
+
+df = pd.DataFrame(data)
+
+# Convert activity level to numerical values
+activity_level_map = {'low': 0, 'moderate': 1, 'high': 2}
+df['activity_level'] = df['activity_level'].map(activity_level_map)
+
+# Normalize heart rate and blood oxygen levels
+scaler = MinMaxScaler()
+df[['heart_rate', 'blood_oxygen']] = scaler.fit_transform(df[['heart_rate', 'blood_oxygen']])
+
+# Anomaly detection using Isolation Forest
+model = IsolationForest(contamination=0.1)
+df['anomaly'] = model.fit_predict(df[['heart_rate', 'blood_oxygen', 'activity_level']])
+
+# Label anomalies
+df['anomaly'] = df['anomaly'].apply(lambda x: 'Anomaly' if x == -1 else 'Normal')
+
+# Recommendation system
+def provide_recommendation(row):
+    if row['anomaly'] == 'Anomaly':
+        if row['heart_rate'] > 0.8: # Assuming 0.8 is the threshold for high heart rate
+            return 'Your heart rate is high. Please take a break and rest.'
+        elif row['blood_oxygen'] < 0.2: # Assuming 0.2 is the threshold for low blood oxygen
+            return 'Your blood oxygen level is low. Please take deep breaths and move to a well-ventilated area.'
+        else:
+            return 'You have an anomaly in your health data. Please consult a doctor.'
+    else:
+        return 'Your health data is normal. Keep up the good work!'
+
+df['recommendation'] = df.apply(provide_recommendation, axis=1)
+
+print(df[['timestamp', 'heart_rate', 'blood_oxygen', 'anomaly', 'recommendation']])
